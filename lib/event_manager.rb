@@ -3,6 +3,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -15,6 +16,10 @@ def clean_phone_number(phone_number)
   else
     'invalid phone number'
   end
+end
+
+def clean_registration_hour(registration_hour)
+  Time.strptime(registration_hour, '%m/%d/%y %k:%M').hour
 end
 
 def legislators_by_zipcode(zip)
@@ -40,6 +45,13 @@ def save_thank_you_letter(id, form_letter)
   end
 end
 
+def define_most_common_registration_hours(registration_hour_array)
+  frequency_table = registration_hour_array.tally
+  most_common_hours = []
+  frequency_table.each { |hour, freq| most_common_hours.push(hour) if freq == frequency_table.values.max }
+  puts "Most common registration hours are: #{most_common_hours.join(', ')}"
+end
+
 puts 'EventManager Initialized!'
 
 contents = CSV.open(
@@ -51,13 +63,20 @@ contents = CSV.open(
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
+registration_hour_array = []
+
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
-  legislators = legislators_by_zipcode(zipcode)
   phone_number = clean_phone_number(row[:homephone])
+  registration_hour = clean_registration_hour(row[:regdate])
+
+  registration_hour_array.push(registration_hour)
+  legislators = legislators_by_zipcode(zipcode)
 
   form_letter = erb_template.result(binding)
   save_thank_you_letter(id, form_letter)
 end
+
+define_most_common_registration_hours(registration_hour_array)
