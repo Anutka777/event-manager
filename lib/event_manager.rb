@@ -22,6 +22,20 @@ def clean_registration_hour(registration_hour)
   Time.strptime(registration_hour, '%m/%d/%y %k:%M').hour
 end
 
+def clean_registration_day(registration_day)
+  day_of_week_id = Time.strptime(registration_day, '%m/%d/%y %k:%M').wday
+  day_of_week_name = {
+    0 => 'Sunday',
+    1 => 'Monday',
+    2 => 'Tuesday',
+    3 => 'Wendnesday',
+    4 => 'Thursday',
+    5 => 'Friday',
+    6 => 'Saturday'
+  }
+  day_of_week_name[day_of_week_id]
+end
+
 def legislators_by_zipcode(zip)
   civic_info = Google::Apis::CivicinfoV2::CivicInfoService.new
   civic_info.key = 'AIzaSyClRzDqDh5MsXwnCWi0kOiiBivP6JsSyBw'
@@ -52,6 +66,13 @@ def define_most_common_registration_hours(registration_hour_array)
   puts "Most common registration hours are: #{most_common_hours.join(', ')}"
 end
 
+def define_most_common_registration_days(registration_day_array)
+  frequency_table = registration_day_array.tally
+  most_common_days = []
+  frequency_table.each { |day, freq| most_common_days.push(day) if freq == frequency_table.values.max }
+  puts "Most common registration days are: #{most_common_days.join(', ')}"
+end
+
 puts 'EventManager Initialized!'
 
 contents = CSV.open(
@@ -64,6 +85,7 @@ template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
 registration_hour_array = []
+registration_day_array = []
 
 contents.each do |row|
   id = row[0]
@@ -71,8 +93,10 @@ contents.each do |row|
   zipcode = clean_zipcode(row[:zipcode])
   phone_number = clean_phone_number(row[:homephone])
   registration_hour = clean_registration_hour(row[:regdate])
+  registration_day = clean_registration_day(row[:regdate])
 
   registration_hour_array.push(registration_hour)
+  registration_day_array.push(registration_day)
   legislators = legislators_by_zipcode(zipcode)
 
   form_letter = erb_template.result(binding)
@@ -80,3 +104,4 @@ contents.each do |row|
 end
 
 define_most_common_registration_hours(registration_hour_array)
+define_most_common_registration_days(registration_day_array)
